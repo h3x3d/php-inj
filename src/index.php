@@ -73,15 +73,9 @@ $app->get('/init', function() use ($app) {
 $app->get('/inj', function(Request $req) use($app) {
   $db = $app['db'];
 
-  $limit = $req->query->get('limit');
-  if(!$limit) {
-    $limit = 10;
-  }
-
-  $offset = $req->query->get('offset');
-  if(!$offset) {
-    $offset = 0;
-  }
+  $limit = $req->query->get('limit', 10);
+  $offset = $req->query->get('offset', 0);
+  
 
   $users = $db
     ->query('SELECT `id`, `name`, `email` FROM users WHERE hidden=0 limit ' . $limit . ' offset ' . $offset);
@@ -98,7 +92,7 @@ $app->get('/inj', function(Request $req) use($app) {
 // No injection because we cast user passed offset to int
 $app->get('/noinjtc', function(Request $req) use($app) {
   $db = $app['db'];
-  
+
   $limit = $req->query->get('limit', 10);
   $offset = $req->query->get('offset', 0);
 
@@ -118,15 +112,9 @@ $app->get('/noinjtc', function(Request $req) use($app) {
 $app->get('/noinjpre', function(Request $req) use($app) {
   $db = $app['db'];
 
-  $limit = $req->query->get('limit');
-  if(!$limit) {
-    $limit = 10;
-  }
-
-  $offset = $req->query->get('offset');
-  if(!$offset) {
-    $offset = 0;
-  }
+  $limit = $req->query->get('limit', 10);
+  $offset = $req->query->get('offset', 0);
+  
 
   $stmt = $db->prepare('SELECT `id`, `name`, `email` FROM users WHERE hidden=0 LIMIT :limit OFFSET :offset');
   $stmt->bindParam(':limit', $limit, PDO::PARAM_INT); 
