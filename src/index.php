@@ -26,8 +26,6 @@ $app->register(new Silex\Provider\TwigServiceProvider(), [
 ]);
 
 class DBException extends Exception {
-  protected $errInfo;
-
   public function __construct($errInfo) {
     $msg =
       "DbError\n" .
@@ -36,8 +34,6 @@ class DBException extends Exception {
       "Msg: $errInfo[2]"; 
 
     parent::__construct($msg);
-
-    $this->errInfo = $errInfo;
   }
 }
 
