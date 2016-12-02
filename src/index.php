@@ -1,19 +1,59 @@
 <?php
+// This is a kitten comment
+//              /\____/\    __
+//            .'  """"  `,-'  `--.__
+//       __,- :   -  -  ;  " ::     `-. -.__
+//    ,-sssss `._  `' _,'"     ,'~~~::`.sssss-.
+//   |ssssss ,' ,_`--'_    __,' ::  `  `.ssssss|
+//  |sssssss `-._____~ `,,'_______,---_;; ssssss|
+//   |ssssssssss     `--'~{__   ____   ,'ssssss|
+//    `-ssssssssssssssssss ~~~~~~~~~~~~ ssss.-'
+//         `---.sssssssssssssssssssss.---'
+
+
 require_once __DIR__ . '/../vendor/autoload.php';
 use Symfony\Component\HttpFoundation\Request;
 
 $config = require(__DIR__ . '/config.php');
 
-$db = new PDO($config['db']['url'], $config['db']['user'], $config['db']['password']);
-
 $app = new Silex\Application();
 
+$app['db'] = new PDO($config['db']['url'], $config['db']['user'], $config['db']['password']); 
+$app['config'] = $config;
 
 $app->register(new Silex\Provider\TwigServiceProvider(), [
   'twig.path' => __DIR__ . '/views'
 ]);
 
-$app->get('/init', function() use ($db, $config) {
+class DBException extends Exception {
+  protected $errInfo;
+
+  public function __construct($errInfo) {
+    $msg =
+      "DbError\n" .
+      "Code: $errInfo[0]\n" .
+      "DrvCode: $errInfo[1]\n" .
+      "Msg: $errInfo[2]"; 
+
+    parent::__construct($msg);
+
+    $this->errInfo = $errInfo;
+  }
+}
+
+$app->error(function(\Exception $e) use($app) {
+  return $app['twig']->render('error.twig', [
+    'name' => get_class($e),
+    'message' => $e->getMessage()
+  ]);
+});
+
+
+$app->get('/init', function() use ($app) {
+  $db = $app['db'];
+
+  $config = $app['config'];
+
   $db->query("DROP TABLE IF EXISTS users");
 
   $res = $db->query("CREATE TABLE users(
@@ -34,7 +74,9 @@ $app->get('/init', function() use ($db, $config) {
   return 'done';
 });
 
-$app->get('/inj', function(Request $req) use($app, $db) {
+$app->get('/inj', function(Request $req) use($app) {
+  $db = $app['db'];
+
   $limit = $req->query->get('limit');
   if(!$limit) {
     $limit = 10;
@@ -49,9 +91,7 @@ $app->get('/inj', function(Request $req) use($app, $db) {
     ->query('SELECT `id`, `name`, `email` FROM users WHERE hidden=0 limit ' . $limit . ' offset ' . $offset);
 
   if(!$users) {
-    echo 'SQL_ERROR<br>';
-    var_dump($db->errorInfo());
-    die();
+    throw new DBException($db->errorInfo());
   }
 
   $users = $users->fetchAll(PDO::FETCH_ASSOC);
@@ -60,7 +100,9 @@ $app->get('/inj', function(Request $req) use($app, $db) {
 });
 
 // No injection because we cast user passed offset to int
-$app->get('/noinjtc', function(Request $req) use($app, $db) {
+$app->get('/noinjtc', function(Request $req) use($app) {
+  $db = $app['db'];
+
   $limit = $req->query->get('limit');
   if(!$limit) {
     $limit = 10;
@@ -75,9 +117,7 @@ $app->get('/noinjtc', function(Request $req) use($app, $db) {
     ->query('SELECT `id`, `name`, `email` FROM users WHERE hidden=0 limit ' . intval($limit) . ' offset ' . intval($offset));
   
   if(!$users) {
-    echo 'SQL_ERROR<br>';
-    var_dump($db->errorInfo());
-    die();
+    throw new DBException($db->errorInfo());
   }
 
   $users = $users->fetchAll(PDO::FETCH_ASSOC);
@@ -86,7 +126,9 @@ $app->get('/noinjtc', function(Request $req) use($app, $db) {
 });
 
 // No injection because we use prepared statement
-$app->get('/noinjpre', function(Request $req) use($app, $db) {
+$app->get('/noinjpre', function(Request $req) use($app) {
+  $db = $app['db'];
+
   $limit = $req->query->get('limit');
   if(!$limit) {
     $limit = 10;
@@ -98,14 +140,13 @@ $app->get('/noinjpre', function(Request $req) use($app, $db) {
   }
 
   $stmt = $db->prepare('SELECT `id`, `name`, `email` FROM users WHERE hidden=0 LIMIT :limit OFFSET :offset');
-  $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+  $stmt->bindParam(':limit', $limit, PDO::PARAM_INT); 
   $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+
+  $res = $stmt->execute();
   
-  if(!$stmt->execute()) {
-    echo 'SQL_ERROR<br>';
-    $stmt->debugDumpParams();
-    var_dump($stmt->errorInfo());
-    die();
+  if(!$res) {
+    throw new DBException($db->errorInfo());
   }
 
   $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
